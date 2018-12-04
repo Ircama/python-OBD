@@ -111,6 +111,54 @@ Returns a boolean for whether a command is supported by both the car and python-
 
 ---
 
+### errors()
+
+Returns two values: the integer number of consecutive failed commands and the time (`time.time()` format) when last valid
+response to a command was received.
+
+A command is considered to fail if 'NO DATA' is returned by ELM327, meaning timeout exceeded while waiting for data.
+AT Commands returning OK, ON, OFF are not accounted.
+
+A timeout generally occurs in case of connection drop (like ignition off).
+
+A response different from 'NO DATA' sets the first value to zero and the second value to the current time. 'NO DATA'
+response increments the first value and does not modify the second one. Both values to zero means connection failure.
+
+Example:
+
+```python
+import obd
+import time
+print("Ignition on")
+connection = obd.OBD()
+connection.errors()
+print(connection.query(obd.commands.SPEED))
+n_failed_commands, time_last_valid_cmd = connection.errors()
+print("n_failed_commands: %s, time_last_valid_cmd: %s" %
+      (n_failed_commands,
+       time.strftime("%Y.%m.%d %H:%M:%S", time.gmtime(time_last_valid_cmd))))
+print("Ignition off")
+print(connection.query(obd.commands.SPEED))
+connection.errors()
+connection.close()
+connection = obd.OBD()
+connection.errors()
+```
+
+Returned values:
+```
+Ignition on
+(0, 1543881492.021219)
+28 kph
+n_failed_commands: 0, time_last_valid_cmd: 2018.12.04 00:00:07
+Ignition off
+None
+(1, 1543882753.8375134)
+(0, 0)
+```
+
+---
+
 ### protocol_id()
 ### protocol_name()
 

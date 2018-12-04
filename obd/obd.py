@@ -32,6 +32,7 @@
 
 
 import logging
+import time
 
 from .__version__ import __version__
 from .elm327 import ELM327
@@ -52,6 +53,8 @@ class OBD(object):
     def __init__(self, portstr=None, baudrate=None, protocol=None, fast=True,
                  timeout=0.1, check_voltage=True):
         self.interface = None
+        self.n_failed_commands = 0
+        self.time_last_valid_cmd = 0
         self.supported_commands = set(commands.base_commands())
         self.fast = fast # global switch for disabling optimizations
         self.timeout = timeout
@@ -237,6 +240,26 @@ class OBD(object):
         return cmd in self.supported_commands
 
 
+    def errors(self):
+        """
+            Returns two values: the integer number of consecutive failed
+            commands and the time [time.time() format] when last valid
+            response to a command was received.
+
+            A command is considered to fail if 'NO DATA' is returned by
+            ELM327, meaning timeout exceeded while waiting for data.
+            
+            A timeout generally occurs in case of connection drop (like
+            ignition going off).
+            
+            A response different from 'NO DATA' sets the first value to
+            zero and the second value to the current time. 'NO DATA'
+            response increments the first value and does not modify the
+            second one.
+        """
+        return self.n_failed_commands, self.time_last_valid_cmd
+
+
     def test_cmd(self, cmd, warn=True):
         """
             Returns a boolean for whether a command will
@@ -265,10 +288,12 @@ class OBD(object):
 
         if self.status() == OBDStatus.NOT_CONNECTED:
             logger.warning("Query failed, no connection available")
+            self.n_failed_commands += 1
             return OBDResponse()
 
         # if the user forces, skip all checks
         if not force and not self.test_cmd(cmd):
+            self.n_failed_commands += 1
             return OBDResponse()
 
         self.__set_header(cmd.header)
@@ -287,6 +312,14 @@ class OBD(object):
         # log it, so we can specify it next time
         if cmd not in self.__frame_counts:
             self.__frame_counts[cmd] = sum([len(m.frames) for m in messages])
+
+        # count failed messages
+        if not messages or (len(messages) == 1 and messages[0].raw() == 'NO DATA'):
+            self.n_failed_commands += 1
+        elif messages and not (len(messages) == 1
+                               and messages[0].raw() in ['OK', 'ON', 'OFF']):
+            self.n_failed_commands = 0
+            self.time_last_valid_cmd = time.time()
 
         if not messages:
             logger.info("No valid OBD Messages returned")
