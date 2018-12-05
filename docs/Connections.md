@@ -142,6 +142,17 @@ Closes the connection.
 
 ---
 
+### print_commands(self, display=True)
+
+Prints or returns all commands supported by the car.
+With no argument (or with argument `display=True`, which is the
+default), the utility function is meant for working in interactive
+mode and displays all commands supported by the car.
+If `display=False`, returns all commands supported by the car
+as a set of OBDCommand items (see `supported_commands` property).
+
+---
+
 ### supported_commands
 
 Property containing a `set` of commands that are supported by the car.

@@ -203,13 +203,20 @@ class OBD(object):
         return self.status() == OBDStatus.CAR_CONNECTED
 
 
-    def print_commands(self):
+    def print_commands(self, display=True):
         """
-            Utility function meant for working in interactive mode.
-            Prints all commands supported by the car.
+            Prints or returns all commands supported by the car.
+            With no argument (or with argument `display=True`, which is the
+            default), the utility function is meant for working in interactive
+            mode and displays all commands supported by the car.
+            If `display=False`, returns all commands supported by the car
+            as a set of OBDCommand items.
         """
-        for c in self.supported_commands:
-            print(str(c))
+        if display:
+            for c in self.supported_commands:
+                print(str(c))
+        else:
+            return self.supported_commands
 
 
     def supports(self, cmd):
