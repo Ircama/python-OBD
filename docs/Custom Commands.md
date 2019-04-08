@@ -107,3 +107,44 @@ The optional `header` argument tells python-OBD to use a custom header when quer
 ---
 
 <br>
+
+Adding a callback to an existing OBDCommand
+==========================================
+
+It is possible to modify an `OBDCommand` object to add a callback by replacing the decoder function. This can also be obtained by creating a cloned object with replaced decoder including the callback, like in the following example:
+
+```
+import obd
+from obd.decoders import raw_string
+ 
+# Example of callback function
+def cmd_callback(messages):
+    print(raw_string(messages))
+ 
+# Definition of new obd.commands.SPEED decoder function including the callback
+def cmd_decoder(messages):
+    cmd_callback(messages) # callback function
+    return obd.commands.SPEED.decode(messages) # default decoder
+ 
+cmd = obd.commands.SPEED.clone()
+cmd.decode = cmd_decoder
+ 
+connection = obd.OBD('/dev/pts/0')
+ 
+print(connection.query(cmd))
+```
+
+The output will be similar to this (where the first line is the callback print message and the second line is the string produced by the default decoder):
+
+```
+7E803410D4C
+76.0 kph
+```
+
+This is especially useful with the `Async` connection, where the callback function is repeatedly called each time subscribed command is checked by the backend thread, regardless issuing a query: invoking `async_obd.query(cmd)` in the example below is not needed for the backend function to be called.
+
+```
+async_obd = obd.Async('/dev/USB0')
+async_obd.watch(cmd, force=True)
+async_obd.start()
+```
